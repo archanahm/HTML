@@ -1,0 +1,214 @@
+import java.text.SimpleDateFormat
+
+apply plugin: "groovy"
+apply plugin: "idea"
+apply plugin: "maven"
+
+version = '1.0.R10'
+
+def debugPort = "5010"
+
+repositories {
+    jcenter()
+    mavenLocal()
+    maven { url "http://longscm01e.gta.travel.lcl:8081/nexus/content/groups/public" }
+}
+
+// The drivers we want to use
+ext.drivers = ["chrome", "chromePrevVer", "phantomjs","firefox","ie",]
+
+dependencies {
+    compile project(':html_common')
+    testCompile "com.jayway.restassured:rest-assured:2.4.1"
+    testCompile "com.kuoni.qa.automation:common_qa_automation:1.4"
+//    compile 'org.testng:testng:6.8.8'
+    compile "org.codehaus.groovy:groovy-all:2.2.1"
+    testCompile "com.athaydes:spock-reports:1.2"
+    compile 'org.seleniumhq.selenium:selenium-remote-driver:2.44.0'
+    testCompile 'org.json:json:20131018'
+    testCompile "net.sf.jt400:jt400-full:6.0"
+//	testCompile 'io.appium:java-client:2.2.0'
+    testCompile 'io.selendroid:selendroid-standalone:0.14.0'
+    testCompile 'org.seleniumhq.selenium:selenium-firefox-driver:2.44.0'
+    testCompile 'org.seleniumhq.selenium:selenium-chrome-driver:2.44.0'
+    testCompile "javax.xml:jaxrpc-api:1.1"
+    testCompile "com.typesafe:config:1.2.1"
+    testCompile 'joda-time:joda-time:2.3'
+    testCompile 'org.apache.httpcomponents:httpclient:4.3.6'
+    testCompile 'org.apache.httpcomponents:fluent-hc:4.3.6'
+    compile 'com.oracle:ojdbc6:11.2.0.3'
+    compile "com.kuoni.qa.automation.util:xdb:1.0"
+    compile group: 'com.codeborne', name: 'phantomjsdriver', version: '1.3.0'
+
+}
+
+drivers.each { driver ->
+
+    task "${driver}Test"(type: Test) {
+        def stest = System.getProperty("singleTest", "")
+        def env = System.getProperty("testEnv")
+
+        def platform = System.getProperty("platform")
+          //systemProperty "platform", System.getProperty("platform", "web")
+        //systemProperty "testplatform", System.getProperty("testplatform", "mobile")
+        def packageName = System.getProperty("packageName", "**/*");
+        def CONFIGLOC = System.getProperty("CONFIGLOC")
+
+        include '**/*' + stest + '*'
+//		include 'com/kuoni/qa/automation/test/pricing/adjustments/**'
+//		include 'com/kuoni/qa/automation/test/pricing/chargeCondition/**'
+//		include 'com/kuoni/qa/automation/test/pricing/commission/**'
+//		include 'com/kuoni/qa/automation/test/pricing/currency/**'
+//		include 'com/kuoni/qa/automation/test/pricing/exclusions/**'
+
+//		 exclude 'com/kuoni/qa/automation/test/pricing/adjustments/**'
+//		include 'com/kuoni/qa/automation/test/pricing/currency/**'
+//		include 'com/kuoni/qa/automation/test/pricing/marginRestrictions/**'
+//		include 'com/kuoni/qa/automation/test/pricing/nationalityDedupe/**'
+
+        //include packageName + stest + '*'
+        reports {
+            html.destination = reporting.file("$name/tests")
+            reports.junitXml.destination = file("$buildDir/reports/$name")
+        }
+
+        systemProperty "geb.build.reportsDir", reporting.file("$name/geb")
+        System.setProperty("geb.env", driver)
+        systemProperty "testEnv", env
+        //systemProperty "packageName", packageName
+        systemProperty "platform", platform
+        systemProperty "CONFIGLOC", CONFIGLOC
+        testLogging { events 'started', 'passed' }
+    }
+}
+
+task pricingTest(type: Test) {
+    description 'Run all pricing tests'
+    def stest = System.getProperty("singleTest", "**")
+    def pkg = System.getProperty("package", "**")
+    def pkgs = System.getProperty("packages", "*")
+    if(!pkgs.equals("*")) {
+        pkgs.split(",").each { pk ->
+            include "com/kuoni/qa/automation/test/pricing/$pk/**"
+        }
+    } else {
+        include "com/kuoni/qa/automation/test/pricing/$pkg/*$stest**"
+    }
+    def browser = System.getProperty("browser", "chrome")
+   // def browser = System.getProperty("browser", "galaxyNote8")
+    System.setProperty("geb.env", browser)
+
+//    include "com/kuoni/qa/automation/test/pricing/**/FixedPriceMarkup709Test**"
+    exclude 'com/kuoni/qa/automation/test/pricing/exclusions/**'
+}
+task hotelsTest(type: Test) {
+    description 'Run all hotels tests'
+//	include 'com/kuoni/qa/automation/test/search/booking/transfer/AirportToHotelTransferTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/HotelInfoTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/SearchByAreaTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/SearchByCityTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/InventorySearchTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/HotelSearchTool**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/HotelMultiRoomTest**'
+    include 'com/kuoni/qa/automation/test/trustYou/HotelTrustYouGCContentTest**'
+    include 'com/kuoni/qa/automation/test/trustYou/HotelTrustYouHybridContentTest**'
+    include 'com/kuoni/qa/automation/test/trustYou/HotelTrustYouOnlyContentTest**'
+    include 'com/kuoni/qa/automation/test/trustYou/HotelNonTrustYouTest**'
+
+    // include 'com/kuoni/qa/automation/test/search/booking/hotel/SanityHotelCanChrgApplyTest'
+}
+task paymentsTest(type: Test){
+    description 'Run all payment tests'
+
+    def stest = System.getProperty("singleTest", "**")
+    include "com/kuoni/qa/automation/test/payments/$stest**"
+    //exclude "com/kuoni/qa/automation/test/payments/PyaNowMultiRoomsTest**"
+    exclude "com/kuoni/qa/automation/test/payments/Sanity**"
+    //exclude "com/kuoni/qa/automation/test/payments/MuMod**"
+}
+task transfersTest(type: Test) {
+    description 'Run all transfers tests'
+//	include 'com/kuoni/qa/automation/test/search/booking/transfer/AirportToHotelTransferTest**'
+    exclude "com/kuoni/qa/automation/test/search/booking/transfer/Sanity**"
+    include 'com/kuoni/qa/automation/test/search/booking/transfer/**'
+
+
+}
+task activitiesTest(type: Test) {
+    description 'Run all Activity tests'
+/*    include 'com/kuoni/qa/automation/test/search/booking/activity/ActivityPDPTest'
+    include 'com/kuoni/qa/automation/test/search/booking/activity/ActivityPLPTest'
+    include 'com/kuoni/qa/automation/test/search/booking/activity/ActivityBookFromPLPTest'
+    include 'com/kuoni/qa/automation/test/search/booking/activity/ActivitySearchToolTest'*/
+    include 'com/kuoni/qa/automation/test/search/booking/activity/SanityActivityTest'
+
+}
+
+task itineraryPageTest(type: Test) {
+    description 'Run all Itinerary page tests'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/ItineraryBookedHotelItem**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/ItineraryCancelledHotelItem**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/UnavailableHotelItemTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/ItineraryAddItemsAndRemove**'
+}
+
+task itineraryPageMultiRoomTest(type: Test) {
+    description 'Run all Itinerary page Multi room tests'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/ItineraryBookedMultipleRoom**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/SugstdNonRcmndMultiRoom**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/itinerary/CancelledMultipleRoom**'
+}
+
+task hotelSearchTest(type: Test) {
+    description 'Run all hotel search tests'
+    include 'com/kuoni/qa/automation/test/search/booking/transfer/AirportToHotelTransferTest**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/Hotel**'
+    include 'com/kuoni/qa/automation/test/search/booking/hotel/Search**'
+}
+
+task itineraryTest(type: Test) {
+    description 'Run all itinerary tests'
+    def stest = System.getProperty("singleTest", "**")
+    include "com/kuoni/qa/automation/test/search/booking/hotel/itinerary/$stest**"
+}
+
+tasks.withType(Test) {
+    systemProperties = System.getProperties()
+    systemProperty "testEnv", System.getProperty("testEnv", "sit")
+    systemProperty "platform", System.getProperty("platform", "web")
+    def browser = System.getProperty("browser", "chrome")
+    //def browser = System.getProperty("browser", "galaxyNote8")
+    System.setProperty("geb.env", browser)
+    reports {
+        html.destination = reporting.file("$name/tests")
+        reports.junitXml.destination = file("$buildDir/reports/$name")
+    }
+
+    systemProperty "geb.build.reportsDir", reporting.file("$name/geb")
+    testLogging.showStandardStreams = true
+    if (System.getProperty('debug', 'false') == 'true') {
+        jvmArgs '-Xdebug', "-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=${debugPort}"
+    }
+}
+
+task createReportZip(type: Zip) {
+    def dateFormat = new SimpleDateFormat("ddMMM-HH_mm")
+    def pkg = System.getProperty("package", "")
+    def zipName = System.getProperty("zipName", pkg)
+    description 'Creates report zip file'
+    def dateString = dateFormat.format(new Date())
+    createReportZip.archiveName = "html_pricing" + "-" +zipName + "-" + version + "-" + dateString + ".zip"
+    from 'build/reports/pricingTest/tests'
+}
+
+tasks.withType(Test) {
+    systemProperty "file.encoding", "utf-8"
+    testLogging { events 'started', 'passed' }
+    maxParallelForks = 3
+    forkEvery = 1
+}
+
+compileJava {
+    options.fork = true
+    options.forkOptions.setMemoryMaximumSize("4g")
+}

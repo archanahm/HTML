@@ -1,0 +1,2 @@
+include ":html_common"
+project(':html_common').projectDir = new File('../html_common')
